@@ -61,6 +61,7 @@ import com.velocitypowered.proxy.util.bossbar.AdventureBossBarManager;
 import com.velocitypowered.proxy.util.ratelimit.Ratelimiter;
 import com.velocitypowered.proxy.util.ratelimit.Ratelimiters;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import fr.hygon.yokura.broker.handlers.Broker;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -138,6 +139,7 @@ public class VelocityServer implements ProxyServer, ForwardingAudience {
   private final VelocityEventManager eventManager;
   private final VelocityScheduler scheduler;
   private final VelocityChannelRegistrar channelRegistrar = new VelocityChannelRegistrar();
+  private final Broker broker = new Broker();
 
   VelocityServer(final ProxyOptions options) {
     pluginManager = new VelocityPluginManager(this);
@@ -249,6 +251,14 @@ public class VelocityServer implements ProxyServer, ForwardingAudience {
       }
     } catch (Exception e) {
       logger.error("Unable to read/load/save your velocity.toml. The server will shut down.", e);
+      LogManager.shutdown();
+      System.exit(1);
+    }
+
+    if (broker.connect(configuration.getYokuraConfig().getBrokerHost(), configuration.getYokuraConfig().getBrokerPort())) {
+      logger.info("Connected to the broker.");
+    } else {
+      logger.error("Couldn't connect to the broker.");
       LogManager.shutdown();
       System.exit(1);
     }

@@ -158,3 +158,13 @@ no-available-servers = "&cThere are no available servers."
 already-connected = "&cYou are already connected to this proxy!"
 moved-to-new-server-prefix = "&cThe server you were on kicked you: "
 generic-connection-error = "&cAn internal error occurred in your connection."
+
+[yokura]
+# Yokura global's config file.
+global-config-file = "/opt/HygonNetwork/yokura-global.yml"
+
+# Folder containing the servers file.
+servers-folder = "/opt/HygonNetwork/servers"
+
+# Temporary folder that will contain the running servers.
+servers-temp-folder = "/opt/HygonNetwork/temp-servers"
