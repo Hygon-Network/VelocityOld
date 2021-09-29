@@ -28,6 +28,10 @@ import java.nio.charset.StandardCharsets;
 public class MessagePacket implements Packet {
   private final Message message;
 
+  public MessagePacket() {
+    this.message = null;
+  }
+
   public MessagePacket(Message message) {
     this.message = message;
   }
