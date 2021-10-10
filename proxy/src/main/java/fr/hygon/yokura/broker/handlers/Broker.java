@@ -69,6 +69,7 @@ public class Broker {
           if (future.isSuccess()) {
             brokerChannel = future.channel();
             sendPacket(new RegisterClientPacket());
+            Thread.sleep(100); // Give some time for the packet to be received and treated
           }
 
           synchronized (locker) {

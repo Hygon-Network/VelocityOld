@@ -42,6 +42,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -148,17 +150,8 @@ public class VelocityConfiguration implements ProxyConfig {
         break;
       case MODERN:
       case BUNGEEGUARD:
-        if (forwardingSecret == null || forwardingSecret.length == 0) {
-          logger.error("You don't have a forwarding secret set. This is required for security.");
-          valid = false;
-        }
-        break;
       default:
         break;
-    }
-
-    if (servers.getServers().isEmpty()) {
-      logger.warn("You don't have any servers configured.");
     }
 
     for (Map.Entry<String, String> entry : servers.getServers().entrySet()) {
@@ -166,13 +159,6 @@ public class VelocityConfiguration implements ProxyConfig {
         AddressUtil.parseAddress(entry.getValue());
       } catch (IllegalArgumentException e) {
         logger.error("Server {} does not have a valid IP address.", entry.getKey(), e);
-        valid = false;
-      }
-    }
-
-    for (String s : servers.getAttemptConnectionOrder()) {
-      if (!servers.getServers().containsKey(s)) {
-        logger.error("Fallback server " + s + " is not registered in your configuration!");
         valid = false;
       }
     }
@@ -293,6 +279,10 @@ public class VelocityConfiguration implements ProxyConfig {
 
   public byte[] getForwardingSecret() {
     return forwardingSecret.clone();
+  }
+
+  public void setForwardingSecret(byte[] forwardingSecret) {
+    this.forwardingSecret = forwardingSecret.clone();
   }
 
   @Override
@@ -422,7 +412,6 @@ public class VelocityConfiguration implements ProxyConfig {
       throw new RuntimeException("Default configuration file does not exist.");
     }
 
-    boolean mustResave = false;
     CommentedFileConfig config = CommentedFileConfig.builder(path)
         .defaultData(defaultConfigLocation)
         .autosave()
@@ -442,19 +431,7 @@ public class VelocityConfiguration implements ProxyConfig {
     CommentedFileConfig defaultConfig = CommentedFileConfig.of(tmpFile, TomlFormat.instance());
     defaultConfig.load();
 
-    // Handle any cases where the config needs to be saved again
-    byte[] forwardingSecret;
-    String forwardingSecretString = config.get("forwarding-secret");
-    if (forwardingSecretString == null || forwardingSecretString.isEmpty()) {
-      forwardingSecretString = generateRandomString(12);
-      config.set("forwarding-secret", forwardingSecretString);
-      mustResave = true;
-    }
-    forwardingSecret = forwardingSecretString.getBytes(StandardCharsets.UTF_8);
-
-    if (mustResave) {
-      config.save();
-    }
+    byte[] forwardingSecret = new byte[0];
 
     // Read the rest of the config
     CommentedConfig serversConfig = config.get("servers");
@@ -464,8 +441,7 @@ public class VelocityConfiguration implements ProxyConfig {
     CommentedConfig metricsConfig = config.get("metrics");
     CommentedConfig messagesConfig = config.get("messages");
     CommentedConfig yokuraConfig = config.get("yokura");
-    PlayerInfoForwarding forwardingMode = config.getEnumOrElse("player-info-forwarding-mode",
-        PlayerInfoForwarding.NONE);
+    PlayerInfoForwarding forwardingMode = PlayerInfoForwarding.MODERN;
     PingPassthroughMode pingPassthroughMode = config.getEnumOrElse("ping-passthrough",
         PingPassthroughMode.DISABLED);
 
@@ -515,12 +491,8 @@ public class VelocityConfiguration implements ProxyConfig {
 
   private static class Servers {
 
-    private Map<String, String> servers = ImmutableMap.of(
-        "lobby", "127.0.0.1:30066",
-        "factions", "127.0.0.1:30067",
-        "minigames", "127.0.0.1:30068"
-    );
-    private List<String> attemptConnectionOrder = ImmutableList.of("lobby");
+    private Map<String, String> servers = ImmutableMap.of();
+    private List<String> attemptConnectionOrder = Collections.synchronizedList(new ArrayList<>());
 
     private Servers() {
     }
@@ -588,11 +560,7 @@ public class VelocityConfiguration implements ProxyConfig {
 
   private static class ForcedHosts {
 
-    private Map<String, List<String>> forcedHosts = ImmutableMap.of(
-        "lobby.example.com", ImmutableList.of("lobby"),
-        "factions.example.com", ImmutableList.of("factions"),
-        "minigames.example.com", ImmutableList.of("minigames")
-    );
+    private Map<String, List<String>> forcedHosts = ImmutableMap.of();
 
     private ForcedHosts() {
     }
@@ -880,8 +848,8 @@ public class VelocityConfiguration implements ProxyConfig {
   }
 
   public static class Yokura {
-    private Path serversFolder = Paths.get("/opt/HygonNetwork/servers");
-    private Path serversTempFolder = Paths.get("/opt/HygonNetwork/temp-servers");
+    private Path serversFolder = Paths.get("");
+    private Path serversTempFolder = Paths.get("");
 
     private String mongoHost = "localhost";
     private int mongoPort = 27017;
@@ -895,29 +863,36 @@ public class VelocityConfiguration implements ProxyConfig {
 
     private Yokura(CommentedConfig config) throws IOException {
       if (config != null) {
-        File yokuraGlobalConfigFile = new File(config.getOrElse("global-config-file", "/opt/HygonNetwork/yokura-global.yml"));
-        this.serversFolder = Paths.get(config.getOrElse("servers-folder", "/opt/HygonNetwork/servers"));
-        this.serversTempFolder = Paths.get(config.getOrElse("servers-folder", "/opt/HygonNetwork/temp-servers"));
+        File yokuraGlobalConfigFile = new File(config.getOrElse("global-config-file",
+            "/opt/HygonNetwork/yokura-global.yml"));
+        this.serversFolder = Paths.get(config.getOrElse("servers-folder",
+            "/opt/HygonNetwork/servers"));
+        this.serversTempFolder = Paths.get(config.getOrElse("servers-temp-folder",
+            "/opt/HygonNetwork/temp-servers"));
 
         InputStream yokuraFileInputStream = new FileInputStream(yokuraGlobalConfigFile);
         Yaml yaml = new Yaml();
         Map<String, Object> yokuraConfig = yaml.load(yokuraFileInputStream);
         yokuraFileInputStream.close();
 
-        Map<String, Object> mongodbInfos = (Map<String, Object>) ((Map<String, Object>) yokuraConfig.get("credentials")).get("mongodb");
+        Map<String, Object> mongodbInfos =
+            (Map<String, Object>) ((Map<String, Object>) yokuraConfig
+                .get("credentials")).get("mongodb");
         this.mongoHost = (String) mongodbInfos.get("host");
         this.mongoPort = (int) mongodbInfos.get("port");
         this.mongoUser = (String) mongodbInfos.get("user");
         this.mongoPassword = ((String) mongodbInfos.get("password")).toCharArray();
         this.mongoDatabase = (String) mongodbInfos.get("database");
 
-        Map<String, Object> brokerInfos = (Map<String, Object>) ((Map<String, Object>) yokuraConfig.get("credentials")).get("broker");
+        Map<String, Object> brokerInfos =
+            (Map<String, Object>) ((Map<String, Object>) yokuraConfig
+                .get("credentials")).get("broker");
         this.brokerHost = (String) brokerInfos.get("host");
         this.brokerPort = (int) brokerInfos.get("port");
       }
     }
 
-    public Path getServersFolder () {
+    public Path getServersFolder() {
       return serversFolder;
     }
 
@@ -938,7 +913,7 @@ public class VelocityConfiguration implements ProxyConfig {
     }
 
     public char[] getMongoPassword() {
-      return mongoPassword;
+      return mongoPassword.clone();
     }
 
     public String getMongoDatabase() {

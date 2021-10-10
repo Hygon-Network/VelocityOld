@@ -62,6 +62,8 @@ import com.velocitypowered.proxy.util.ratelimit.Ratelimiter;
 import com.velocitypowered.proxy.util.ratelimit.Ratelimiters;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import fr.hygon.yokura.broker.handlers.Broker;
+import fr.hygon.yokura.servers.SendCommand;
+import fr.hygon.yokura.servers.ServerManager;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -140,6 +142,7 @@ public class VelocityServer implements ProxyServer, ForwardingAudience {
   private final VelocityScheduler scheduler;
   private final VelocityChannelRegistrar channelRegistrar = new VelocityChannelRegistrar();
   private final Broker broker = new Broker();
+  private ServerManager serverManager;
 
   VelocityServer(final ProxyOptions options) {
     pluginManager = new VelocityPluginManager(this);
@@ -204,6 +207,7 @@ public class VelocityServer implements ProxyServer, ForwardingAudience {
     commandManager.register("velocity", new VelocityCommand(this));
     commandManager.register("server", new ServerCommand(this));
     commandManager.register("shutdown", new ShutdownCommand(this),"end");
+    commandManager.register("sendcommand", new SendCommand(),"cmd");
     new GlistCommand(this).register();
 
     this.doStartupConfigLoad();
@@ -234,6 +238,9 @@ public class VelocityServer implements ProxyServer, ForwardingAudience {
       this.cm.queryBind(configuration.getBind().getHostString(), configuration.getQueryPort());
     }
 
+
+    serverManager = new ServerManager(this);
+    serverManager.start();
     Metrics.VelocityMetrics.startMetrics(this, configuration.getMetrics());
   }
 
@@ -255,7 +262,8 @@ public class VelocityServer implements ProxyServer, ForwardingAudience {
       System.exit(1);
     }
 
-    if (broker.connect(configuration.getYokuraConfig().getBrokerHost(), configuration.getYokuraConfig().getBrokerPort())) {
+    if (broker.connect(configuration.getYokuraConfig().getBrokerHost(),
+        configuration.getYokuraConfig().getBrokerPort())) {
       logger.info("Connected to the broker.");
     } else {
       logger.error("Couldn't connect to the broker.");
@@ -460,6 +468,8 @@ public class VelocityServer implements ProxyServer, ForwardingAudience {
       }
 
       shutdown = true;
+
+      serverManager.shutdown();
 
       if (explicitExit) {
         AccessController.doPrivileged(new PrivilegedAction<Void>() {

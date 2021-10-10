@@ -2,7 +2,7 @@
 config-version = "1.0"
 
 # What port should the proxy be bound to? By default, we'll bind to all addresses on port 25577.
-bind = "0.0.0.0:25577"
+bind = "0.0.0.0:25565"
 
 # What should be the MOTD? This gets displayed when the player adds your server to
 # their server list. Legacy color codes and JSON are accepted.
@@ -19,22 +19,6 @@ online-mode = true
 # authentication server, the player is kicked. This disallows some VPN and proxy
 # connections but is a weak form of protection.
 prevent-client-proxy-connections = false
-
-# Should we forward IP addresses and other data to backend servers?
-# Available options:
-# - "none":        No forwarding will be done. All players will appear to be connecting
-#                  from the proxy and will have offline-mode UUIDs.
-# - "legacy":      Forward player IPs and UUIDs in a BungeeCord-compatible format. Use this
-#                  if you run servers using Minecraft 1.12 or lower.
-# - "bungeeguard": Forward player IPs and UUIDs in a format supported by the BungeeGuard
-#                  plugin. Use this if you run servers using Minecraft 1.12 or lower, and are
-#                  unable to implement network level firewalling (on a shared host).
-# - "modern":      Forward player IPs and UUIDs as part of the login process using
-#                  Velocity's native forwarding. Only applicable for Minecraft 1.13 or higher.
-player-info-forwarding-mode = "NONE"
-
-# If you are using modern or BungeeGuard IP forwarding, configure a unique secret here.
-forwarding-secret = ""
 
 # Announce whether or not your server supports Forge. If you run a modded server, we
 # suggest turning this on.
@@ -65,26 +49,7 @@ ping-passthrough = "DISABLED"
 [servers]
 # Configure your servers here. Each key represents the server's name, and the value
 # represents the IP address of the server to connect to.
-lobby = "127.0.0.1:30066"
-factions = "127.0.0.1:30067"
-minigames = "127.0.0.1:30068"
-
-# In what order we should try servers when a player logs in or is kicked from a server.
-try = [
-  "lobby"
-]
-
-[forced-hosts]
-# Configure your forced hosts here.
-"lobby.example.com" = [
-  "lobby"
-]
-"factions.example.com" = [
-  "factions"
-]
-"minigames.example.com" = [
-  "minigames"
-]
+# Only add static servers here.
 
 [advanced]
 # How large a Minecraft packet has to be before we compress it. Setting this to zero will
