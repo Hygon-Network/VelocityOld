@@ -25,17 +25,41 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
 public class ClientHandler extends ChannelInboundHandlerAdapter {
+  private ByteBuf packetBuf;
+
+  @Override
+  public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+    packetBuf = ctx.alloc().buffer(4);
+  }
+
+  @Override
+  public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+    packetBuf.release();
+    packetBuf = null;
+  }
+
   @Override
   public void channelRead(ChannelHandlerContext channelHandlerContext, Object object) {
     ByteBuf byteBuf = (ByteBuf) object;
+    packetBuf.writeBytes(byteBuf);
+    byteBuf.release();
 
-    int packetId = byteBuf.readInt();
-    Packet packet = Packets.getPacketById(packetId);
-    if (packet == null) {
-      System.err.println("Received unknown packet with id " + packetId);
-      return;
+    if (packetBuf.readableBytes() >= 4) {
+      int packetSize = packetBuf.readInt();
+      if (packetBuf.readableBytes() >= packetSize) {
+        int packetId = packetBuf.readInt();
+        Packet packet = Packets.getPacketById(packetId);
+        if (packet == null) {
+          System.err.println("Received unknown packet with id " + packetId);
+          return;
+        }
+        packet.read(channelHandlerContext, packetBuf);
+        packetBuf = channelHandlerContext.alloc().buffer(4);
+      } else {
+        packetBuf.resetReaderIndex();
+        packetBuf.resetWriterIndex();
+      }
     }
-    packet.read(channelHandlerContext, byteBuf);
   }
 
   @Override
