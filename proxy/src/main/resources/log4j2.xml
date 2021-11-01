@@ -25,6 +25,9 @@
           <!-- Velocity doesn't need a prefix -->
           <PatternMatch key="com.velocitypowered."
             pattern="%highlightError{[%d{HH:mm:ss} %level]: %minecraftFormatting{%msg}%n%xEx}"/>
+            <!-- Yokura doesn't need a prefix either -->
+            <PatternMatch key="fr.hygon.yokura."
+            pattern="%highlightError{[%d{HH:mm:ss} %level]: %minecraftFormatting{%msg}%n%xEx}"/>
         </LoggerNamePatternSelector>
       </PatternLayout>
     </TerminalConsole>
@@ -44,5 +47,9 @@
       <AppenderRef ref="TerminalConsole"/>
       <AppenderRef ref="File"/>
     </Root>
+    <Logger name="org.mongodb.driver" level="off" additivity="true">
+      <AppenderRef ref="TerminalConsole"/>
+      <AppenderRef ref="File"/>
+    </Logger>
   </Loggers>
 </Configuration>
